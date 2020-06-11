@@ -11,7 +11,7 @@ public class ArrayHeapMinPQ<T> implements ExtrinsicMinPQ<T> {
     private int capacity;
 
     public ArrayHeapMinPQ(int c) {
-        items = new ArrayHeapMinPQ.PriorityNode[c+1];
+        items = new ArrayHeapMinPQ.PriorityNode[c + 1];
         // nothing will be stored in items[0]
         for (int i = 0; i < c + 1; i += 1) {
             items[i] = null;
@@ -37,7 +37,7 @@ public class ArrayHeapMinPQ<T> implements ExtrinsicMinPQ<T> {
     }
 
     private boolean containsHelper(T item, int current) {
-        if (current >= capacity + 1) {
+        if (current >= size() + 1) {
             return false;
         }
         if (item.equals(items[current].getItem())) {
@@ -46,7 +46,8 @@ public class ArrayHeapMinPQ<T> implements ExtrinsicMinPQ<T> {
         if (!hasLeftChild(current) && !hasRightChild(current)) {
             return false;
         } else {
-            return containsHelper(item, leftChild(current)) || containsHelper(item, rightChild(current));
+            return containsHelper(item, leftChild(current))
+                    || containsHelper(item, rightChild(current));
         }
     }
 
@@ -79,14 +80,27 @@ public class ArrayHeapMinPQ<T> implements ExtrinsicMinPQ<T> {
             throw new IllegalArgumentException("No such item. ");
         }
         // the structure may change, reorganization required
-        items[indexOf(item, priority)].setPriority(priority);
+        // If priority grows bigger, then sink; otherwise swim
+        // I suppose it takes O(log(N)) time now
+        int objectiveIndex = indexOf(item, priority);
+        PriorityNode objectiveNode = items[indexOf(item, priority)];
+        double originPriority = objectiveNode.getPriority();
+        objectiveNode.setPriority(priority);
+        if (originPriority > priority) {
+            swim(objectiveIndex);
+        } else {
+            sink(objectiveIndex);
+        }
 
+        // DONE JUN/11/2020
+        // Obviously this part is taking O(N) time. Anyway to optimize it?
+        /*
         ArrayHeapMinPQ<T> newPQ = new ArrayHeapMinPQ<>(this.capacity);
-        // TODO Obviously this part is taking O(N) time. Anyway to optimize it?
-        for (int i = 1; i < size()+1; i += 1) {
+        for (int i = 1; i < size() + 1; i += 1) {
             newPQ.add(items[i].getItem(), items[i].getPriority());
         }
         this.items = newPQ.items;
+         */
     }
 
     /** Return index of given item
@@ -94,7 +108,7 @@ public class ArrayHeapMinPQ<T> implements ExtrinsicMinPQ<T> {
     private int indexOf(T item, double priority) {
         /* TODO A better way to get index of a priority node
             I have to say iterating all the nodes is a stupid approach
-            but nothing inspiration has come to me so far */
+            but nothing inspiration has come to me so far
         int i = 1;
         for (; i < size + 1; i += 1) {
             if (items[i].getPriority() == priority && items[i].getItem().equals(item)) {
@@ -102,24 +116,23 @@ public class ArrayHeapMinPQ<T> implements ExtrinsicMinPQ<T> {
             }
         }
         return i;
+        */
+        return indexOfHelper(item, priority, 1);
+    }
 
-        /*
-        int k = 1;
-        while (2 * k <= size()) {
-            PriorityNode itemK = items[k];
-            if (itemK.getItem().equals(item) && itemK.getPriority() == priority) {
-                break;
-            } else if (k < size() && items[k + 1].getItem().equals(item) && items[k + 1].getPriority() == priority) {
-                return k + 1;
-            } else if (items[2 * k].getItem().equals(item) && items[2 * k].getPriority() == priority) {
-                return 2 * k;
-            } else {
-                k = 2 * k;
-            }
+    private int indexOfHelper(T item, double priority, int current) {
+        if (current >= size() + 1) {
+            return -1;
         }
-        return k;
-
-         */
+        if (item.equals(items[current].getItem())) {
+            return current;
+        }
+        if (!hasLeftChild(current) && !hasRightChild(current)) {
+            return -1;
+        } else {
+            return Math.max(indexOfHelper(item, priority, leftChild(current)),
+                    indexOfHelper(item, priority, rightChild(current)));
+        }
     }
 
     /* Global Helper Methods */
@@ -185,7 +198,7 @@ public class ArrayHeapMinPQ<T> implements ExtrinsicMinPQ<T> {
         private T item;
         private double priority;
 
-        public PriorityNode(T i, double p) {
+        PriorityNode(T i, double p) {
             item = i;
             priority = p;
         }
@@ -219,8 +232,8 @@ public class ArrayHeapMinPQ<T> implements ExtrinsicMinPQ<T> {
             if (obj == null || obj.getClass() != this.getClass()) {
                 return false;
             }
-            return ((PriorityNode) obj).getItem().equals(this.getItem()) &&
-                    ((PriorityNode) obj).getPriority() == this.getPriority();
+            return ((PriorityNode) obj).getItem().equals(this.getItem())
+                    && ((PriorityNode) obj).getPriority() == this.getPriority();
         }
 
         @Override
@@ -244,10 +257,7 @@ public class ArrayHeapMinPQ<T> implements ExtrinsicMinPQ<T> {
         hpq.add("Susan", 30);
         PrintHeapDemo.printFancyHeapDrawing(hpq.items);
 
-        int i = hpq.indexOf("Bob", 10);
-        i = hpq.indexOf("Joe", 15);
-        i = hpq.indexOf("Joshua", 50);
-        i = hpq.indexOf("Susan", 30);
+        hpq.changePriority("Luuk", 40);
         PrintHeapDemo.printFancyHeapDrawing(hpq.items);
     }
 }
