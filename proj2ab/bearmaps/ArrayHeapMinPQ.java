@@ -1,5 +1,8 @@
 package bearmaps;
 
+import edu.princeton.cs.algs4.StdRandom;
+import edu.princeton.cs.algs4.Stopwatch;
+
 import java.util.NoSuchElementException;
 
 public class ArrayHeapMinPQ<T> implements ExtrinsicMinPQ<T> {
@@ -248,16 +251,24 @@ public class ArrayHeapMinPQ<T> implements ExtrinsicMinPQ<T> {
     }
 
     public static void main(String[] args) {
-        ArrayHeapMinPQ<String> hpq = new ArrayHeapMinPQ<>(10);
-        hpq.add("Joshua", 50);
-        hpq.add("Bob", 10);
-        hpq.add("Alice", 20);
-        hpq.add("Joe", 15);
-        hpq.add("Luuk", 10);
-        hpq.add("Susan", 30);
-        PrintHeapDemo.printFancyHeapDrawing(hpq.items);
 
-        hpq.changePriority("Luuk", 40);
-        PrintHeapDemo.printFancyHeapDrawing(hpq.items);
+        ArrayHeapMinPQ<String> hpq = new ArrayHeapMinPQ<>(10);
+        double a=0.0, b=0.0;
+
+            Stopwatch sw = new Stopwatch();
+            for (int i = 0; i < 2000000; i += 1) {
+                hpq.add("time" + i, StdRandom.gaussian());
+            }
+            a += sw.elapsedTime();
+
+            Stopwatch swNaive = new Stopwatch();
+            NaiveMinPQ<String> pqNaive = new NaiveMinPQ<>();
+            for (int i = 0; i < 2000000; i += 1) {
+                pqNaive.add("time" + i, StdRandom.gaussian());
+            }
+            b += swNaive.elapsedTime();
+
+        System.out.println(a);
+        System.out.println(b);
     }
 }
