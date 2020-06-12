@@ -3,9 +3,9 @@ package bearmaps;
 import java.util.ArrayList;
 import java.util.List;
 
-public class KDTreeMiss implements PointSet{
+public class QuadTree implements PointSet{
     QuadTreeNode root;
-    public KDTreeMiss(List<Point> points) {
+    public QuadTree(List<Point> points) {
         for (Point point : points) {
             put(point);
         }
@@ -113,7 +113,7 @@ public class KDTreeMiss implements PointSet{
         points2.add(E);
         points2.add(C);
 
-        KDTreeMiss t2 = new KDTreeMiss(points2);
+        QuadTree t2 = new QuadTree(points2);
         System.out.println("Fine");
     }
 }
