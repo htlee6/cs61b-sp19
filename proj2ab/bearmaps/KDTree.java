@@ -1,30 +1,41 @@
 package bearmaps;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class KDTree implements PointSet{
-    QuadTreeNode root;
+    KDTreeNode root;
     public KDTree(List<Point> points) {
-        for (Point point : points) {
-            put(point);
+        for (Point aPoint : points) {
+            put(aPoint);
         }
     }
-
+    /** Put the given point p in right place */
     public void put(Point p) {
-        root = put(root, p);
+        root = putHelper(root, p, 0);
     }
 
-    /* Helper Method */
-    private QuadTreeNode put(QuadTreeNode node, Point p) {
+    private KDTreeNode putHelper(KDTreeNode node, Point p, int depth) {
         if (p == null) {
-            throw new IllegalArgumentException("Point can't be null");
+            throw new IllegalArgumentException("Point to put couldn't be null");
         }
         if (node == null) {
-            return new QuadTreeNode(p);
+            return new KDTreeNode(p, depth);
         }
-        int direction = node.goTo(p);
-        node.children[direction] = put(node.children[direction], p);
+        int cmp;
+        if (compareX(depth)) { // at level which split vertically
+            cmp = Double.compare(p.getX(), node.point.getX());
+        } else { // at level which split horizontally
+            cmp = Double.compare(p.getY(), node.point.getY());
+        }
+        if (cmp > 0) {
+            node.childBig = putHelper(node.childBig, p, depth + 1);
+        } else if (cmp < 0) {
+            node.childSmall = putHelper(node.childSmall, p, depth + 1);
+        } else { // tie breaker, treat it as greater than
+            node.childBig = putHelper(node.childBig, p, depth + 1);
+        }
         return node;
     }
 
@@ -32,73 +43,60 @@ public class KDTree implements PointSet{
     public Point nearest(double x, double y) {
         return null;
     }
+    private class KDTreeNode {
+        private int depth;
+        private boolean vertical;
+        private Point point;
+        private KDTreeNode childSmall;
+        private KDTreeNode childBig;
 
-    // specifically, implement quadtree here
-    private class QuadTreeNode {
-        private Point p;
-        private QuadTreeNode[] children;
-        // NE - 0, SE - 1, SW - 2, NW - 3
-
-        public QuadTreeNode(Point point) {
-            p = point;
-            children = new QuadTreeNode[4];
+        public KDTreeNode(Point p) {
+            depth = 0;
+            vertical = isVertical(depth);
+            point = p;
+            childBig = null;
+            childSmall = null;
         }
 
-        public Point getPoint() {
-            return p;
+        public KDTreeNode(Point p, int d) {
+            depth = d;
+            vertical = isVertical(depth);
+            point = p;
+            childBig = null;
+            childSmall = null;
         }
 
-        public QuadTreeNode getChild(int i) {
-            if (i >= 4) {
-                throw new IllegalArgumentException("Child index overflow");
-            }
-            return children[i];
+        public boolean splitVertically() {
+            return vertical;
         }
 
-        public void setChild(int i, QuadTreeNode node) {
-            if (i >= 4) {
-                throw new IllegalArgumentException("Child index overflow");
-            }
-            children[i] = node;
+        public int getDepth() {
+            return depth;
         }
 
-        public int goTo(Point o) {
-            if (getPoint().getX() < o.getX()) {
-                // Always east
-                if (getPoint().getY() < o.getY()) {
-                    // Northeast
-                    return 0;
-                } else {
-                    // Southeast
-                    return 1;
-                }
-            } else {
-                // Always west
-                if (getPoint().getY() < o.getY()) {
-                    // Northwest
-                    return 3;
-                } else {
-                    // Southwest
-                    return 2;
-                }
-            }
+        private boolean isVertical(int depth) {
+            return depth % 2 == 0;
         }
+    }
+    private static boolean compareX(int d) {
+        return d % 2 == 0;
     }
 
     public static void main(String[] args) {
-        Point A = new Point(-1, -1),
-                B = new Point(2, 2),
-                C = new Point(0, 1),
-                D = new Point(1, 0),
-                E = new Point(-2, -2);
+        Point A = new Point(2, 3),
+                B = new Point(4, 2),
+                C = new Point(4, 5),
+                D = new Point(3, 3),
+                E = new Point(1, 5),
+                F = new Point(4, 4);
         ArrayList<Point> points = new ArrayList<>();
         points.add(A);
         points.add(B);
         points.add(C);
         points.add(D);
         points.add(E);
-
-        KDTree t = new KDTree(points);
+        points.add(F);
+        KDTree kdt = new KDTree(points);
         System.out.println("Fine");
     }
 }
