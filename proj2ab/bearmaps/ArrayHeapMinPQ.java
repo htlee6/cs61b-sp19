@@ -29,8 +29,8 @@ public class ArrayHeapMinPQ<T> implements ExtrinsicMinPQ<T> {
             resize();
         }
         items[size + 1] = new PriorityNode(item, priority);
-        swim(size + 1);
         size += 1;
+        swim(size + 1);
     }
 
     @Override
@@ -67,8 +67,10 @@ public class ArrayHeapMinPQ<T> implements ExtrinsicMinPQ<T> {
         PriorityNode deletedNode = items[1];
         items[1] = items[size];
         items[size] = null;
-        sink(1);
         size -= 1;
+        if (size() > 0) {
+            sink(1);
+        }
         return deletedNode.getItem();
     }
 
@@ -172,7 +174,7 @@ public class ArrayHeapMinPQ<T> implements ExtrinsicMinPQ<T> {
             if (j < size() && items[j].compareTo(items[j + 1]) > 0) {
                 j += 1;
             }
-            if (items[k].compareTo(items[j + 1]) <= 0) {
+            if (items[k].compareTo(items[j]) <= 0) {
                 break;
             }
             exchange(k, j);
