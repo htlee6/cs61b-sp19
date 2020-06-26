@@ -10,15 +10,13 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutput;
 import java.io.File;
 import java.io.IOException;
-import java.util.Base64;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 
-import static bearmaps.proj2c.utils.Constants.SEMANTIC_STREET_GRAPH;
-import static bearmaps.proj2c.utils.Constants.ROUTE_LIST;
+import static bearmaps.proj2c.utils.Constants.*;
 
 /**
  * Handles requests from the web browser for map images. These images
@@ -84,11 +82,60 @@ public class RasterAPIHandler extends APIRouteHandler<Map<String, Double>, Map<S
      */
     @Override
     public Map<String, Object> processRequest(Map<String, Double> requestParams, Response response) {
-        //System.out.println("yo, wanna know the parameters given by the web browser? They are:");
-        //System.out.println(requestParams);
+        System.out.println("yo, wanna know the parameters given by the web browser? They are:");
+        System.out.println(requestParams);
         Map<String, Object> results = new HashMap<>();
-        System.out.println("Since you haven't implemented RasterAPIHandler.processRequest, nothing is displayed in "
+        // variables declaration
+        double lrlon = requestParams.get("lrlon"), ullon = requestParams.get("ullon"), width = requestParams.get("w");
+        double lrlat = requestParams.get("lrlat"), ullat = requestParams.get("ullat");
+        double queryBoxLonDPP = (lrlon - ullon) / width;
+
+        /* Corner Case I: Partial Coverage */
+
+        /* Corner Case II: No Coverage */
+        if (outsideOfRoot(ullon, ullat, lrlon, lrlat) || queryBoxMakesNoSense(ullon, ullat, lrlon, lrlat)) {
+            results.put("query_success", false);
+            return results;
+        }
+
+        int depth = chooseAppropriateDepth(queryBoxLonDPP);
+
+        List<Integer> xIndices = xIndices(depth, ullon, lrlon);
+        List<Integer> yIndices = yIndices(depth, ullat, lrlat);
+        int xGrids = xIndices.size(), yGrids = yIndices.size();
+
+        String[][] render_grid = new String[yGrids][xGrids];
+
+        Map<String, Double> rasterInfos = rasterCoordinates(depth, xIndices.get(0), xIndices.get(xIndices.size() - 1), yIndices.get(0), yIndices.get(yIndices.size() - 1));
+        double raster_ul_lon = rasterInfos.get("raster_ullon"),
+                raster_ul_lat = rasterInfos.get("raster_ullat"),
+                raster_lr_lon = rasterInfos.get("raster_lrlon"),
+                raster_lr_lat = rasterInfos.get("raster_lrlat");
+
+        boolean query_success = depth > 0;
+
+        int i = 0;
+        for (Integer x : xIndices) {
+            int j = 0;
+            for (Integer y : yIndices) {
+                String imgName = indexToImgName(depth, x, y);
+                render_grid[j][i] = imgName;
+                j += 1;
+            }
+            i += 1;
+        }
+
+        results.put("render_grid", render_grid);
+        results.put("raster_ul_lon", raster_ul_lon);
+        results.put("raster_ul_lat", raster_ul_lat);
+        results.put("raster_lr_lon", raster_lr_lon);
+        results.put("raster_lr_lat", raster_lr_lat);
+        results.put("depth", depth);
+        results.put("query_success", query_success);
+
+        /* System.out.println("Since you haven't implemented RasterAPIHandler.processRequest, nothing is displayed in "
                 + "your browser.");
+         */
         return results;
     }
 
@@ -213,4 +260,99 @@ public class RasterAPIHandler extends APIRouteHandler<Map<String, Double>, Map<S
         }
         return tileImg;
     }
+
+    /********************************************************************
+     * My helpers
+     ********************************************************************/
+    private static int chooseAppropriateDepth(double stdLonDPP) {
+        int d = 0;
+        double computedLonDPP = (ROOT_LRLON - ROOT_ULLON) / TILE_SIZE ;
+        for ( ; d < 8; d += 1) {
+            if (Double.compare(computedLonDPP, stdLonDPP) < 0) {
+                return d;
+            }
+            computedLonDPP = computedLonDPP / 2;
+        }
+        return -1;
+    }
+
+    private static String indexToImgName(int depth, int x, int y) {
+        return "d" + String.valueOf(depth) + "_x" + String.valueOf(x) + "_y" + String.valueOf(y) + ".png";
+    }
+
+    private static ArrayList<Integer> xIndices(int depth, double ullon, double lrlon) {
+        ArrayList<Integer> res = new ArrayList<>();
+        double deltaX = (ROOT_LRLON - ROOT_ULLON) / (depth * depth);
+        double currentBox_ul_lon = ROOT_ULLON, currentBox_lr_lon = currentBox_ul_lon + deltaX;
+        boolean adding = false;
+        int x = 0;
+        while (x < depth * depth) {
+            if (Double.compare(currentBox_ul_lon, ullon) <= 0 && Double.compare(currentBox_lr_lon, ullon) > 0) {
+                adding = true;
+            }
+            if (Double.compare(currentBox_ul_lon, lrlon) > 0) {
+                break;
+            }
+            if (adding) {
+                res.add(x);
+            }
+            x += 1;
+            currentBox_lr_lon += deltaX;
+            currentBox_ul_lon += deltaX;
+        }
+        return res;
+    }
+
+    private static ArrayList<Integer> yIndices(int depth, double ullat, double lrlat) {
+        ArrayList<Integer> res = new ArrayList<>();
+        double deltaY = (ROOT_ULLAT - ROOT_LRLAT) / (depth * depth);
+        double currentBox_ul_lat = ROOT_ULLAT, currentBox_lr_lon = currentBox_ul_lat - deltaY;
+        boolean adding = false;
+        int y = 0;
+        while (y < depth * depth) {
+            if (Double.compare(currentBox_ul_lat, ullat) >= 0 && Double.compare(currentBox_lr_lon, ullat) < 0) {
+                adding = true;
+            }
+            if (Double.compare(currentBox_ul_lat, lrlat) < 0) {
+                adding = false;
+            }
+            if (adding) {
+                res.add(y);
+            }
+            y += 1;
+            currentBox_lr_lon -= deltaY;
+            currentBox_ul_lat -= deltaY;
+        }
+        return res;
+    }
+
+    private static Map<String, Double> rasterCoordinates(int depth, int xStart, int xEnd, int yStart, int yEnd) {
+        Map<String, Double> res = new HashMap<>();
+        double deltaX = (ROOT_LRLON - ROOT_ULLON) / (depth * depth);
+        double deltaY = (ROOT_ULLAT - ROOT_LRLAT) / (depth * depth);
+        double raster_ullon = ROOT_ULLON + xStart * deltaX,
+                raster_lrlon = ROOT_ULLON + xEnd * deltaX,
+                raster_ullat = ROOT_ULLAT - yStart * deltaY,
+                raster_lrlat = ROOT_LRLAT - yEnd * deltaY;
+        res.put("raster_ullon", raster_ullon);
+        res.put("raster_ullat", raster_ullat);
+        res.put("raster_lrlon", raster_lrlon);
+        res.put("raster_lrlat", raster_lrlat);
+        return res;
+    }
+
+    private static boolean outsideOfRoot(double ullon, double ullat, double lrlon, double lrlat) {
+        if (ullon >= ROOT_ULLON && ullat <= ROOT_ULLAT && lrlon <= ROOT_LRLON && lrlat >= ROOT_LRLAT) {
+            return false;
+        }
+        return true;
+    }
+
+    private static boolean queryBoxMakesNoSense(double ullon, double ullat, double lrlon, double lrlat) {
+        if (ullon < lrlon && ullat > lrlat) {
+            return false;
+        }
+        return true;
+    }
+
 }
