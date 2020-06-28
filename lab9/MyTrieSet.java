@@ -1,19 +1,20 @@
 import java.util.*;
 
 public class MyTrieSet implements TrieSet61B {
-    // private static final int R = 128;
     private Node root;
 
     private class Node {
-        // private char ch;
         private boolean isKey;
         private HashMap<Character, Node> next;
 
-        public Node(boolean k, int R) {
-            // ch = c;
+        Node(boolean k) {
             isKey = k;
             next = new HashMap<>();
         }
+    }
+
+    public MyTrieSet() {
+        root = new Node(false);
     }
 
     /**
@@ -21,7 +22,7 @@ public class MyTrieSet implements TrieSet61B {
      */
     @Override
     public void clear() {
-        root = null;
+        root = new Node(false);
     }
 
     /**
@@ -29,7 +30,7 @@ public class MyTrieSet implements TrieSet61B {
      */
     @Override
     public boolean contains(String key) {
-        List<String> collection = keysWithPrefix(key);
+        List<String> collection = collection();
         for (String aString : collection) {
             if (aString.equals(key)) {
                 return true;
@@ -43,9 +44,18 @@ public class MyTrieSet implements TrieSet61B {
      */
     @Override
     public void add(String key) {
-        if (contains(key)) return;
+        // if (contains(key)) return;
+        if (key == null || key.length() < 1) return;
         // TODO
-
+        Node currentNode = root;
+        for (int i = 0; i < key.length(); i += 1) {
+            char c = key.charAt(i);
+            if (!currentNode.next.containsKey(c)) {
+                currentNode.next.put(c, new Node(false));
+            }
+            currentNode = currentNode.next.get(c);
+        }
+        currentNode.isKey = true;
     }
 
     /**
@@ -53,18 +63,34 @@ public class MyTrieSet implements TrieSet61B {
      */
     @Override
     public List<String> keysWithPrefix(String prefix) {
-        List<String> collection = new LinkedList<>();
-        for (String akey : root.next.keys()) {
-
+        List<String> keysWithPrefix = new LinkedList<>();
+        Node currentNode = root;
+        for (int i = 0; i < prefix.length(); i += 1) {
+            char c = prefix.charAt(i);
+            currentNode = currentNode.next.get(c);
         }
-        return collection;
+        for (char c : currentNode.next.keySet()) {
+            colHelper(prefix + c, keysWithPrefix, currentNode.next.get(c));
+        }
+        return keysWithPrefix;
     }
 
-    private MyTrieSet keysWithPrefixHelper(String s, List<String> x, DataIndexedCharMap n) {
-        if (n.isKey) {
+    private List<String> collection() {
+        List<String> result = new LinkedList<>();
+        colHelper("", result, root);
+        return result;
+    }
+
+    private void colHelper(String s, List<String> x, Node n) {
+        if (n == null) {
+            return;
+        }
+        if (n.isKey == true) {
             x.add(s);
         }
-
+        for (char c : n.next.keySet()) {
+            colHelper(s + c, x, n.next.get(c));
+        }
     }
 
     /**
@@ -74,8 +100,28 @@ public class MyTrieSet implements TrieSet61B {
      */
     @Override
     public String longestPrefixOf(String key) {
-        return null;
+        int i = 0;
+        try {
+            for (; i < key.length(); i += 1) {
+                if (keysWithPrefix(key.substring(0, i)).size() == 0) {
+                    break;
+                }
+            }
+        } catch (NullPointerException e) {
+            return key.substring(0, i - 1);
+        }
+        return key;
     }
 
     /* GLOBAL HELPER */
+
+    public static void main(String[] args) {
+        MyTrieSet ts = new MyTrieSet();
+        ts.add("awls");
+        ts.add("sad");
+        ts.add("same");
+        ts.add("sap");
+        String longestPrefix = ts.longestPrefixOf("sample");
+        System.out.println(longestPrefix);
+    }
 }
