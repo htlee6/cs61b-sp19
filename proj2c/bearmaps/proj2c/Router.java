@@ -29,7 +29,12 @@ public class Router {
                                           double destlon, double destlat) {
         long src = g.closest(stlon, stlat);
         long dest = g.closest(destlon, destlat);
-        return new AStarSolver<>(g, src, dest, 20).solution();
+        // TODO why src hasn't any neighbors??? only in test case I & VI
+        // print and found is an empty list
+        // System.out.println(g.neighbors(src));
+        // System.out.println(g.neighbors(dest));
+        AStarSolver astarsol = new AStarSolver<>(g, src, dest, 20);
+        return  astarsol.solution();
     }
 
     /**
