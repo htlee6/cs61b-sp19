@@ -90,12 +90,12 @@ public class RasterAPIHandler extends APIRouteHandler<Map<String, Double>, Map<S
         double lrlat = requestParams.get("lrlat"), ullat = requestParams.get("ullat");
         double queryBoxLonDPP = (lrlon - ullon) / width;
 
-        /* Corner Case I: Partial Coverage */
+        /* Fail Corner Case I: Partial Coverage */
+        // TODO
 
-        /* Corner Case II: No Coverage */
+        /* Fail Corner Case II: No Coverage */
         if (outsideOfRoot(ullon, ullat, lrlon, lrlat) || queryBoxMakesNoSense(ullon, ullat, lrlon, lrlat)) {
-            results.put("query_success", false);
-            return results;
+            return queryFail();
         }
 
         int depth = chooseAppropriateDepth(queryBoxLonDPP);
@@ -264,6 +264,7 @@ public class RasterAPIHandler extends APIRouteHandler<Map<String, Double>, Map<S
     /********************************************************************
      * My helpers
      ********************************************************************/
+
     private static int chooseAppropriateDepth(double stdLonDPP) {
         int d = 0;
         double computedLonDPP = (ROOT_LRLON - ROOT_ULLON) / TILE_SIZE ;
@@ -306,11 +307,11 @@ public class RasterAPIHandler extends APIRouteHandler<Map<String, Double>, Map<S
     private static ArrayList<Integer> yIndices(int depth, double ullat, double lrlat) {
         ArrayList<Integer> res = new ArrayList<>();
         double deltaY = (ROOT_ULLAT - ROOT_LRLAT) / (depth * depth);
-        double currentBox_ul_lat = ROOT_ULLAT, currentBox_lr_lon = currentBox_ul_lat - deltaY;
+        double currentBox_ul_lat = ROOT_ULLAT, currentBox_lr_lat = currentBox_ul_lat - deltaY;
         boolean adding = false;
         int y = 0;
         while (y < depth * depth) {
-            if (Double.compare(currentBox_ul_lat, ullat) >= 0 && Double.compare(currentBox_lr_lon, ullat) < 0) {
+            if (Double.compare(currentBox_ul_lat, ullat) >= 0 && Double.compare(currentBox_lr_lat, ullat) < 0) {
                 adding = true;
             }
             if (Double.compare(currentBox_ul_lat, lrlat) < 0) {
@@ -320,7 +321,7 @@ public class RasterAPIHandler extends APIRouteHandler<Map<String, Double>, Map<S
                 res.add(y);
             }
             y += 1;
-            currentBox_lr_lon -= deltaY;
+            currentBox_lr_lat -= deltaY;
             currentBox_ul_lat -= deltaY;
         }
         return res;
@@ -328,12 +329,12 @@ public class RasterAPIHandler extends APIRouteHandler<Map<String, Double>, Map<S
 
     private static Map<String, Double> rasterCoordinates(int depth, int xStart, int xEnd, int yStart, int yEnd) {
         Map<String, Double> res = new HashMap<>();
-        double deltaX = (ROOT_LRLON - ROOT_ULLON) / (depth * depth);
-        double deltaY = (ROOT_ULLAT - ROOT_LRLAT) / (depth * depth);
+        double deltaX = (ROOT_LRLON - ROOT_ULLON) / (depth * depth );
+        double deltaY = (ROOT_ULLAT - ROOT_LRLAT) / (depth * depth );
         double raster_ullon = ROOT_ULLON + xStart * deltaX,
-                raster_lrlon = ROOT_ULLON + xEnd * deltaX,
+                raster_lrlon = ROOT_ULLON + (xEnd + 1) * deltaX,
                 raster_ullat = ROOT_ULLAT - yStart * deltaY,
-                raster_lrlat = ROOT_LRLAT - yEnd * deltaY;
+                raster_lrlat = ROOT_ULLAT - (yEnd + 1) * deltaY;
         res.put("raster_ullon", raster_ullon);
         res.put("raster_ullat", raster_ullat);
         res.put("raster_lrlon", raster_lrlon);
