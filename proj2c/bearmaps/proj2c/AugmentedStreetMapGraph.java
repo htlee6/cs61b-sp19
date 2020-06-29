@@ -1,9 +1,11 @@
 package bearmaps.proj2c;
 
+import bearmaps.MyTrieSet;
 import bearmaps.hw4.streetmap.Node;
 import bearmaps.hw4.streetmap.StreetMapGraph;
 import bearmaps.proj2ab.Point;
 
+import java.time.temporal.ValueRange;
 import java.util.*;
 
 /**
@@ -15,8 +17,17 @@ import java.util.*;
  */
 public class AugmentedStreetMapGraph extends StreetMapGraph {
 
+    private MyTrieSet locations;
+
     public AugmentedStreetMapGraph(String dbPath) {
         super(dbPath);
+        locations = new MyTrieSet();
+        List<Node> nodes = getNodes();
+        for (Node node : nodes) {
+            if (node.name() != null) {
+                locations.add(cleanString(node.name()));
+            }
+        }
         // You might find it helpful to uncomment the line below:
         // List<Node> nodes = this.getNodes();
     }
@@ -30,7 +41,22 @@ public class AugmentedStreetMapGraph extends StreetMapGraph {
      * @return The id of the node in the graph closest to the target.
      */
     public long closest(double lon, double lat) {
-        return 0;
+        // TODO Use KdTree to run in O(logN) time
+        double minDist = Double.POSITIVE_INFINITY;
+        Node closestNode = null;
+        for (Node aNode : this.getNodes()) {
+            if (dist(aNode, lon, lat) < minDist) {
+                minDist = dist(aNode, lon, lat);
+                closestNode = aNode;
+            }
+        }
+        return closestNode.id();
+    }
+
+    private static double dist(Node n, double lon, double lat) {
+        double deltaLon = n.lon() - lon,
+                deltaLat = n.lat() - lat;
+        return Math.sqrt(deltaLat * deltaLat + deltaLon * deltaLon);
     }
 
 
@@ -43,7 +69,15 @@ public class AugmentedStreetMapGraph extends StreetMapGraph {
      * cleaned <code>prefix</code>.
      */
     public List<String> getLocationsByPrefix(String prefix) {
-        return new LinkedList<>();
+        System.out.println("Trying to find locations with clean prefix: " + cleanString(prefix));
+        String cleanPrefix = cleanString(prefix);
+        List<Map<String, Object>> fullInfos = getLocations(cleanPrefix);
+        List<String> fullNames = new LinkedList<>();
+        for (Map<String, Object> aPieceOfInfo : fullInfos) {
+            fullNames.add((String) aPieceOfInfo.get("name"));
+        }
+        System.out.println("Full names: " + fullNames);
+        return fullNames;
     }
 
     /**
@@ -60,7 +94,21 @@ public class AugmentedStreetMapGraph extends StreetMapGraph {
      * "id" -> Number, The id of the node. <br>
      */
     public List<Map<String, Object>> getLocations(String locationName) {
-        return new LinkedList<>();
+        List<Map<String, Object>> results = new LinkedList<>();
+        LinkedList<String> cleanResults = (LinkedList<String>) locations.keysWithPrefix(locationName);
+        for (Node n : getNodes()) {
+            for (String aCleanResult : cleanResults) {
+                if (n.name() != null && aCleanResult.equals(cleanString(n.name()))) {
+                    Map<String, Object> subRes = new HashMap<>();
+                    subRes.put("lat", n.lat());
+                    subRes.put("lon", n.lon());
+                    subRes.put("name", n.name());
+                    subRes.put("id", n.id());
+                    results.add(subRes);
+                }
+            }
+        }
+        return results;
     }
 
 
